@@ -24,17 +24,21 @@ internal static class Program
         FlightSimulator sim = new(props) { Throttle = 0.75f };
         VirtualPilotController vpc = new(props);
         FlightState state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
+        using CloudField clouds = new();
 
         bool vpcMode = false;
         float chaseDistance = 35f;
         float cameraYawOffset = 0f;
         float cameraPitchOffset = 0.25f;
+        float elapsed = 0f;
+        ForceVector? pendingDebugForce = null;
 
         while (!Raylib.WindowShouldClose())
         {
             float dt = Math.Clamp(Raylib.GetFrameTime(), 1f / 240f, 1f / 20f);
+            elapsed += dt;
 
-            HandleMetaInput(ref vpcMode, ref chaseDistance, ref state, sim);
+            HandleMetaInput(ref vpcMode, ref chaseDistance, ref state, sim, ref pendingDebugForce);
 
             if (!vpcMode)
             {
@@ -57,6 +61,12 @@ internal static class Program
             {
                 flightCursor = FlightCursor.ProjectFromMouse(state, camera);
                 fci = vpc.ComputeFci(state, flightCursor);
+                // Manual roll still available in VPC mode.
+                float manualAileron = ReadManualAileron();
+                if (MathF.Abs(manualAileron) > 0.01f)
+                {
+                    fci = new Fci(manualAileron, fci.Elevator, fci.Rudder);
+                }
             }
             else
             {
@@ -64,7 +74,15 @@ internal static class Program
             }
 
             AdjustThrottle(sim, dt);
-            state = sim.Tick(state, fci, dt);
+            if (pendingDebugForce is ForceVector debugForce)
+            {
+                state = sim.Tick(state, fci, dt, [debugForce]);
+                pendingDebugForce = null;
+            }
+            else
+            {
+                state = sim.Tick(state, fci, dt);
+            }
 
             // Camera tracks the post-tick pose for rendering.
             camera = BuildChaseCamera(state, chaseDistance, cameraYawOffset, cameraPitchOffset);
@@ -74,10 +92,11 @@ internal static class Program
             }
 
             Raylib.BeginDrawing();
-            Raylib.ClearBackground(new Color(135, 185, 220, 255));
+            Raylib.ClearBackground(new Color(45, 95, 170, 255));
 
             Raylib.BeginMode3D(camera);
-            WorldRenderer.Draw(state.Position.X, state.Position.Z);
+            WorldRenderer.Draw(camera, state.Position.X, state.Position.Z);
+            clouds.Draw(camera, elapsed);
             DummyPlaneRenderer.Draw(state);
 
             if (vpcMode)
@@ -104,7 +123,8 @@ internal static class Program
         ref bool vpcMode,
         ref float chaseDistance,
         ref FlightState state,
-        FlightSimulator sim)
+        FlightSimulator sim,
+        ref ForceVector? pendingDebugForce)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.V))
         {
@@ -135,12 +155,72 @@ internal static class Program
             state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
             sim.Throttle = 0.75f;
         }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Space))
+        {
+            pendingDebugForce = CreateRandomAirframeForce(sim.Properties.MassKg);
+        }
+    }
+
+    /// <summary>
+    /// Debug jolt: strong world-space force at a random body point on the dummy airframe.
+    /// </summary>
+    private static ForceVector CreateRandomAirframeForce(float massKg)
+    {
+        // Rough bounds matching DummyPlaneRenderer (wingspan ~12 m, fuselage ~8 m).
+        Vector3 localPoint = new(
+            Random.Shared.NextSingle() * 12f - 6f,
+            Random.Shared.NextSingle() * 2f - 0.5f,
+            Random.Shared.NextSingle() * 8f - 4f);
+
+        Vector3 direction = RandomUnitVector();
+        // ~5–8× weight so one tick produces a clear translational + rotational kick.
+        float magnitude = massKg * 9.81f * (5f + Random.Shared.NextSingle() * 3f);
+        return ForceVector.World(direction * magnitude, localPoint);
+    }
+
+    private static Vector3 RandomUnitVector()
+    {
+        // Uniform direction on the sphere via Gaussian components.
+        Vector3 v = new(
+            NextGaussian(),
+            NextGaussian(),
+            NextGaussian());
+        float lenSq = v.LengthSquared();
+        if (lenSq < 1e-8f)
+        {
+            return Vector3.UnitY;
+        }
+
+        return v / MathF.Sqrt(lenSq);
+    }
+
+    private static float NextGaussian()
+    {
+        float u1 = MathF.Max(Random.Shared.NextSingle(), 1e-6f);
+        float u2 = Random.Shared.NextSingle();
+        return MathF.Sqrt(-2f * MathF.Log(u1)) * MathF.Cos(2f * MathF.PI * u2);
+    }
+
+    private static float ReadManualAileron()
+    {
+        float aileron = 0f;
+        if (Raylib.IsKeyDown(KeyboardKey.D) || Raylib.IsKeyDown(KeyboardKey.Right))
+        {
+            aileron += 1f;
+        }
+
+        if (Raylib.IsKeyDown(KeyboardKey.A) || Raylib.IsKeyDown(KeyboardKey.Left))
+        {
+            aileron -= 1f;
+        }
+
+        return aileron;
     }
 
     private static Fci ReadManualFci()
     {
         float elevator = 0f;
-        float aileron = 0f;
         float rudder = 0f;
 
         if (Raylib.IsKeyDown(KeyboardKey.W) || Raylib.IsKeyDown(KeyboardKey.Up))
@@ -153,16 +233,6 @@ internal static class Program
             elevator -= 1f;
         }
 
-        if (Raylib.IsKeyDown(KeyboardKey.D) || Raylib.IsKeyDown(KeyboardKey.Right))
-        {
-            aileron += 1f;
-        }
-
-        if (Raylib.IsKeyDown(KeyboardKey.A) || Raylib.IsKeyDown(KeyboardKey.Left))
-        {
-            aileron -= 1f;
-        }
-
         if (Raylib.IsKeyDown(KeyboardKey.E))
         {
             rudder += 1f;
@@ -173,7 +243,7 @@ internal static class Program
             rudder -= 1f;
         }
 
-        return new Fci(aileron, elevator, rudder);
+        return new Fci(ReadManualAileron(), elevator, rudder);
     }
 
     private static void AdjustThrottle(FlightSimulator sim, float dt)

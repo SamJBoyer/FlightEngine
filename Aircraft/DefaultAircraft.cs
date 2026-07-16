@@ -13,7 +13,8 @@ public static class DefaultAircraft
     {
         const float mass = 3500f;
         const float wingArea = 22f;
-        const float cd0 = 0.028f;
+        // Stronger parasite drag so idle coasts bleed energy in tens of seconds, not minutes.
+        const float cd0 = 0.11f;
         const float airDensity = 1.225f;
 
         // CLmax chosen so level stall speed ≈ 150 km/h:
@@ -22,10 +23,13 @@ public static class DefaultAircraft
 
         float climbSpeed = Speed.KmhToMetersPerSecond(280f);
         float qClimb = 0.5f * airDensity * climbSpeed * climbSpeed;
-        float dragClimb = qClimb * wingArea * cd0;
+        // Include a representative induced-drag term for a 20° climb.
+        float clClimb = (mass * 9.81f * MathF.Cos(20f * MathF.PI / 180f)) / (qClimb * wingArea);
+        float cdClimb = cd0 + 0.08f * clClimb * clClimb;
+        float dragClimb = qClimb * wingArea * cdClimb;
         float weight = mass * 9.81f;
         float climbAngle = 20f * MathF.PI / 180f;
-        float maxThrust = dragClimb + weight * MathF.Sin(climbAngle) * 0.98f;
+        float maxThrust = dragClimb + weight * MathF.Sin(climbAngle) * 1.02f;
 
         return new FlightProperties
         {
@@ -40,14 +44,14 @@ public static class DefaultAircraft
             LiftSlope = 2.8f,
             MaxLiftCoefficient = clMax,
             ParasiteDragCoefficient = cd0,
-            InducedDragFactor = 0.05f,
+            InducedDragFactor = 0.08f,
             StallAoAWidth = 0.5f,
             StallLiftRetention = 0.15f,
             PostStallControlRetention = 0.2f,
             ReferenceSpeedKmh = 400f,
             MinimumControlSpeedKmh = 40f,
             MaxRollRate = MathF.PI / 3f,
-            MaxPitchRate = MathF.PI * 2f / 14.2f,
+            MaxPitchRate = MathF.PI * 2f / 13.5f,
             MaxYawRate = MathF.PI * 2f / 15f,
             VelocityAlignRate = 3.2f,
             AirDensity = airDensity

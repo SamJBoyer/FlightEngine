@@ -30,14 +30,15 @@ internal static class HudOverlay
         Line(ref y, vpcMode ? "Control    VPC (aim plane)" : "Control    Manual FCI");
         Line(ref y, $"Ail {fci.Aileron,5:0.00}  Elv {fci.Elevator,5:0.00}  Rdr {fci.Rudder,5:0.00}");
 
-        Raylib.DrawRectangle(12, Raylib.GetScreenHeight() - 150, 560, 138, new Color(12, 16, 22, 170));
-        int hy = Raylib.GetScreenHeight() - 138;
+        Raylib.DrawRectangle(12, Raylib.GetScreenHeight() - 170, 560, 158, new Color(12, 16, 22, 170));
+        int hy = Raylib.GetScreenHeight() - 158;
         if (vpcMode)
         {
             Help(ref hy, "Mouse            aim on plane ahead (world cursor)");
+            Help(ref hy, "A / D            manual roll (overrides VPC bank)");
             Help(ref hy, "Shift / Ctrl     throttle up / down");
             Help(ref hy, "V  exit VPC   R reset   C camera zoom");
-            Help(ref hy, "Yellow sphere = projected flight-cursor");
+            Help(ref hy, "Space           debug: random airframe force");
             Help(ref hy, $"Chase distance: {chaseDistance:0} m");
         }
         else
@@ -47,6 +48,7 @@ internal static class HudOverlay
             Help(ref hy, "Q / E            rudder (yaw)");
             Help(ref hy, "Shift / Ctrl     throttle up / down");
             Help(ref hy, "V  VPC mode   R reset   C camera zoom");
+            Help(ref hy, "Space           debug: random airframe force");
             Help(ref hy, $"Chase distance: {chaseDistance:0} m   | green=nose  blue=velocity");
         }
     }

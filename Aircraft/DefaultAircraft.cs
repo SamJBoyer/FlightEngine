@@ -29,7 +29,7 @@ public static class DefaultAircraft
         float dragClimb = qClimb * wingArea * cdClimb;
         float weight = mass * 9.81f;
         float climbAngle = 20f * MathF.PI / 180f;
-        float maxThrust = dragClimb + weight * MathF.Sin(climbAngle) * 1.02f;
+        float maxThrust = dragClimb + weight * MathF.Sin(climbAngle) * 0.88f;
 
         return new FlightProperties
         {
@@ -51,8 +51,11 @@ public static class DefaultAircraft
             ReferenceSpeedKmh = 400f,
             MinimumControlSpeedKmh = 40f,
             MaxRollRate = MathF.PI / 3f,
-            MaxPitchRate = MathF.PI * 2f / 13.5f,
+            MaxPitchRate = MathF.PI * 2f / 9.8f,
             MaxYawRate = MathF.PI * 2f / 15f,
+            // CoG ahead of / below the aero center — mild static margin, natural stall tip.
+            CenterOfGravityLocal = new Vector3(0f, -0.1f, 0.28f),
+            AeroCenterLocal = new Vector3(0f, 0f, 0.2f),
             VelocityAlignRate = 3.2f,
             AirDensity = airDensity
         };

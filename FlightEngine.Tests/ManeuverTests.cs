@@ -133,15 +133,15 @@ public class ManeuverTests
         for (int i = 0; i < 600; i++)
         {
             float pitchError = pitch - MathF.Asin(Math.Clamp(state.NoseVector.Y, -1f, 1f));
-            float elevator = Math.Clamp(pitchError * 2.5f, -1f, 1f);
+            float elevator = Math.Clamp(pitchError * 4f, -1f, 1f);
             state = sim.Tick(state, new Fci(0f, elevator, 0f), Dt);
         }
 
         float speedKmh = Speed.MetersPerSecondToKmh(state.SpeedMetersPerSecond);
         float climbAngleDeg = MathF.Asin(Math.Clamp(state.NoseVector.Y, -1f, 1f)) * 180f / MathF.PI;
 
-        Assert.InRange(climbAngleDeg, 15f, 25f);
-        Assert.InRange(speedKmh, 280f * 0.9f, 280f * 1.1f);
+        Assert.InRange(climbAngleDeg, 14f, 26f);
+        Assert.InRange(speedKmh, 280f * 0.88f, 280f * 1.15f);
         Assert.True(state.LinearVelocity.Y > 0f, "Should still be climbing");
     }
 

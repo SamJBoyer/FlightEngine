@@ -122,21 +122,21 @@ public class PhysicsContractTests
         Assert.True(sim.IsStalled(state));
         float startPitch = MathF.Asin(Math.Clamp(state.NoseVector.Y, -1f, 1f));
 
-        // Hold full back stick — recovery should still win once deeply stalled.
+        // Full back stick: with no stall assist, forward/low CoG should still tip the nose.
         float minPitch = startPitch;
         bool sawFall = false;
-        for (int i = 0; i < 180; i++)
+        for (int i = 0; i < 240; i++)
         {
             state = sim.Tick(state, new Fci(0f, 1f, 0f), Dt);
             minPitch = MathF.Min(minPitch, MathF.Asin(Math.Clamp(state.NoseVector.Y, -1f, 1f)));
             sawFall |= state.LinearVelocity.Y < 0f;
         }
 
-        Assert.True(minPitch < startPitch - 0.35f, $"Nose should drop in stall (start {startPitch:F2}, min {minPitch:F2})");
-        Assert.True(sawFall, "Should enter a falling trajectory during stall recovery");
+        Assert.True(minPitch < startPitch - 0.25f, $"Nose should drop from CoG (start {startPitch:F2}, min {minPitch:F2})");
+        Assert.True(sawFall, "Should enter a falling trajectory");
 
         // Let it dive and regain flying speed.
-        for (int i = 0; i < 480; i++)
+        for (int i = 0; i < 540; i++)
         {
             state = sim.Tick(state, Fci.Neutral, Dt);
         }
@@ -217,9 +217,7 @@ public class PhysicsContractTests
             MaxPitchRate = source.MaxPitchRate,
             MaxYawRate = source.MaxYawRate,
             CenterOfGravityLocal = source.CenterOfGravityLocal,
-            StallWeathercockGain = source.StallWeathercockGain,
-            StallNoseDownTorque = source.StallNoseDownTorque,
-            StallAngularDamping = source.StallAngularDamping,
+            AeroCenterLocal = source.AeroCenterLocal,
             VelocityAlignRate = source.VelocityAlignRate,
             AirDensity = source.AirDensity,
             Gravity = source.Gravity

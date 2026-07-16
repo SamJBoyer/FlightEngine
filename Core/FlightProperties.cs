@@ -5,7 +5,7 @@ namespace FlightEngine.Core;
 /// <summary>
 /// Aerodynamic and mass properties of a single rigid-body aircraft.
 /// </summary>
-public sealed class FlightProperties
+public sealed record FlightProperties
 {
     public required float MassKg { get; init; }
 
@@ -55,22 +55,15 @@ public sealed class FlightProperties
 
     /// <summary>
     /// Body-space center of gravity relative to the aero reference (meters).
-    /// Forward (+Z) CoG produces nose-down pitch when wing lift collapses.
+    /// Forward (+Z) of the wing so weight pitches the nose down when lift collapses.
     /// </summary>
-    public Vector3 CenterOfGravityLocal { get; init; } = new(0f, 0f, 1.2f);
+    public Vector3 CenterOfGravityLocal { get; init; } = new(0f, -0.2f, 0.55f);
 
     /// <summary>
-    /// Extra body-torque gain that weathervanes the nose into the velocity vector while stalled.
+    /// Body-space point where lift/drag are applied. Slightly behind the CoG so
+    /// level flight is near trim, while lost lift leaves a CoG nose-down moment.
     /// </summary>
-    public float StallWeathercockGain { get; init; } = 14000f;
-
-    /// <summary>
-    /// Direct nose-down body torque (N·m scale) applied while stalled, strongest when nose-high.
-    /// </summary>
-    public float StallNoseDownTorque { get; init; } = 22000f;
-
-    /// <summary>Extra angular damping while stalled to prevent end-over-end tumbling.</summary>
-    public float StallAngularDamping { get; init; } = 9000f;
+    public Vector3 AeroCenterLocal { get; init; } = new(0f, 0f, 0.4f);
 
     /// <summary>How strongly velocity aligns with the nose when lift is producing (1/s).</summary>
     public float VelocityAlignRate { get; init; } = 1.2f;

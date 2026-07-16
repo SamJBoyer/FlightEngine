@@ -20,9 +20,10 @@ internal static class Program
         Raylib.SetTargetFPS(60);
         Raylib.DisableCursor();
 
-        FlightProperties props = DefaultAircraft.CreateProperties();
-        FlightSimulator sim = new(props) { Throttle = 0.75f };
-        VirtualPilotController vpc = new(props);
+        int aircraftIndex = 0;
+        AircraftDefinition aircraft = AircraftRoster.ByIndex(aircraftIndex);
+        FlightSimulator sim = new(aircraft.Properties) { Throttle = 0.75f };
+        VirtualPilotController vpc = new(aircraft.Properties);
         FlightState state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
         using CloudField clouds = new();
 
@@ -38,7 +39,15 @@ internal static class Program
             float dt = Math.Clamp(Raylib.GetFrameTime(), 1f / 240f, 1f / 20f);
             elapsed += dt;
 
-            HandleMetaInput(ref vpcMode, ref chaseDistance, ref state, sim, ref pendingDebugForce);
+            HandleMetaInput(
+                ref vpcMode,
+                ref chaseDistance,
+                ref state,
+                ref aircraftIndex,
+                ref aircraft,
+                ref sim,
+                ref vpc,
+                ref pendingDebugForce);
 
             if (!vpcMode)
             {
@@ -97,7 +106,7 @@ internal static class Program
             Raylib.BeginMode3D(camera);
             WorldRenderer.Draw(camera, state.Position.X, state.Position.Z);
             clouds.Draw(camera, elapsed);
-            DummyPlaneRenderer.Draw(state);
+            DummyPlaneRenderer.Draw(state, aircraft.Visual, sim.EngineOnline);
 
             if (vpcMode)
             {
@@ -111,7 +120,15 @@ internal static class Program
                 FlightCursor.DrawScreenReticle();
             }
 
-            HudOverlay.Draw(state, fci, sim, vpcMode, chaseDistance);
+            HudOverlay.Draw(
+                state,
+                fci,
+                sim,
+                aircraft,
+                aircraftIndex,
+                AircraftRoster.All.Count,
+                vpcMode,
+                chaseDistance);
             Raylib.DrawFPS(Raylib.GetScreenWidth() - 100, 16);
             Raylib.EndDrawing();
         }
@@ -123,7 +140,10 @@ internal static class Program
         ref bool vpcMode,
         ref float chaseDistance,
         ref FlightState state,
-        FlightSimulator sim,
+        ref int aircraftIndex,
+        ref AircraftDefinition aircraft,
+        ref FlightSimulator sim,
+        ref VirtualPilotController vpc,
         ref ForceVector? pendingDebugForce)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.V))
@@ -150,22 +170,62 @@ internal static class Program
             };
         }
 
+        if (Raylib.IsKeyPressed(KeyboardKey.P))
+        {
+            aircraftIndex = (aircraftIndex + 1) % AircraftRoster.All.Count;
+            LoadAircraft(aircraftIndex, ref aircraft, ref sim, ref vpc, ref state);
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Y))
+        {
+            int killed = sim.KillRandomEngine();
+            if (killed >= 0)
+            {
+                // Refresh VPC trim so it compensates for the new imbalance.
+                FlightProperties masked = AircraftRoster.WithEngineMask(aircraft.Properties, sim.EngineOnline);
+                vpc = new VirtualPilotController(masked, sim.Throttle);
+            }
+        }
+
         if (Raylib.IsKeyPressed(KeyboardKey.R))
         {
             state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
             sim.Throttle = 0.75f;
+            sim.RestoreEngines();
+            vpc = new VirtualPilotController(aircraft.Properties);
         }
 
         if (Raylib.IsKeyPressed(KeyboardKey.Space))
         {
-            pendingDebugForce = CreateRandomAirframeForce(sim.Properties.MassKg);
+            // ~5–8× weight: clear jolt.
+            pendingDebugForce = CreateRandomAirframeForce(sim.Properties.MassKg, 5f, 8f);
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.T))
+        {
+            // ~40–60× weight: huge kick.
+            pendingDebugForce = CreateRandomAirframeForce(sim.Properties.MassKg, 40f, 60f);
         }
     }
 
+    private static void LoadAircraft(
+        int index,
+        ref AircraftDefinition aircraft,
+        ref FlightSimulator sim,
+        ref VirtualPilotController vpc,
+        ref FlightState state)
+    {
+        aircraft = AircraftRoster.ByIndex(index);
+        float throttle = sim.Throttle;
+        sim = new FlightSimulator(aircraft.Properties) { Throttle = throttle };
+        vpc = new VirtualPilotController(aircraft.Properties);
+        state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
+    }
+
     /// <summary>
-    /// Debug jolt: strong world-space force at a random body point on the dummy airframe.
+    /// Debug jolt: world-space force at a random body point on the dummy airframe.
     /// </summary>
-    private static ForceVector CreateRandomAirframeForce(float massKg)
+    private static ForceVector CreateRandomAirframeForce(float massKg, float minWeightMult, float maxWeightMult)
     {
         // Rough bounds matching DummyPlaneRenderer (wingspan ~12 m, fuselage ~8 m).
         Vector3 localPoint = new(
@@ -174,8 +234,8 @@ internal static class Program
             Random.Shared.NextSingle() * 8f - 4f);
 
         Vector3 direction = RandomUnitVector();
-        // ~5–8× weight so one tick produces a clear translational + rotational kick.
-        float magnitude = massKg * 9.81f * (5f + Random.Shared.NextSingle() * 3f);
+        float weightMult = minWeightMult + Random.Shared.NextSingle() * (maxWeightMult - minWeightMult);
+        float magnitude = massKg * 9.81f * weightMult;
         return ForceVector.World(direction * magnitude, localPoint);
     }
 

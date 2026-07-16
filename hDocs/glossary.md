@@ -14,23 +14,8 @@ Elevators: tail mounted control surfaces that control the pitch of the plane
 
 FCI (Flight controller input): a packet of alieron, rudder, and elevator instructions that represents the control-surface inputs of the plane.
 
-VPC (Virtual Pilot Controller): Algorithm that translates the player's mouse input to FCI required to point the translation vector towards the Flight-cursor. 
+VPC (Virtual Pilot Controller): Algorithm that translates the a 3d point  to the FCI required to point the translation vector towards the Flight-cursor. 
 
-Flight-cursor:  The in-flight cursor that indicates where the VPC is attempting to aim the translation-vector towards.
-
-Input-bubble: the spherical surface surrounding the plane that is used to calculate the flight-cursor. Calculated as a projection from the camera through the plane onto the sphere. 
-
-<flight-state>
-
-Definition: a strucutre the represents the state of the plane. This object will be passed back and forth the boundry 
-
-Contains:
-- Position
-- Rotation
-- Linear velocity
-- Angular velocity
-
-</flight-state>
 Flight-state: a struct that represents the aerodynamic state of the plane. Consists of position, rotation, linear velocity, and angular velocity. 
 
 Flight-engine: Script responsible for taking a flight-state, applying an FCI to it, then calculating the resulting flight-state at each tick.

@@ -33,6 +33,18 @@ internal static class DummyPlaneRenderer
             case PlaneVisualStyle.TwinEngine:
                 DrawTwinEngine(pos, rot, engineOnline);
                 break;
+            case PlaneVisualStyle.FastCruise:
+                DrawFastCruise(pos, rot);
+                break;
+            case PlaneVisualStyle.SlowCruise:
+                DrawSlowCruise(pos, rot);
+                break;
+            case PlaneVisualStyle.LateCompression:
+                DrawLateCompression(pos, rot);
+                break;
+            case PlaneVisualStyle.EarlyCompression:
+                DrawEarlyCompression(pos, rot);
+                break;
             default:
                 DrawBaseline(pos, rot);
                 break;
@@ -103,6 +115,57 @@ internal static class DummyPlaneRenderer
         DrawOrientedBox(pos, rot, new Vector3(0f, 0.4f, 4.0f), new Vector3(1.3f, 0.9f, 1.8f), new Color(30, 32, 36, 255));
         // Belly bulge
         DrawOrientedBox(pos, rot, new Vector3(0f, -0.55f, 0.2f), new Vector3(1.4f, 0.7f, 5.5f), new Color(55, 57, 62, 255));
+    }
+
+    /// <summary>Long needle fuselage, silver — built to go fast.</summary>
+    private static void DrawFastCruise(Vector3 pos, Quaternion rot)
+    {
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0f, 0.6f), new Vector3(0.95f, 0.85f, 10.5f), new Color(190, 195, 205, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.06f, -0.8f), new Vector3(9.5f, 0.18f, 1.4f), new Color(150, 160, 175, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.7f, -4.2f), new Vector3(0.18f, 1.6f, 1.8f), new Color(140, 150, 165, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.12f, -4.4f), new Vector3(2.6f, 0.15f, 1.0f), new Color(130, 140, 155, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.28f, 4.6f), new Vector3(0.75f, 0.5f, 1.6f), new Color(30, 34, 40, 255));
+        // Afterburner glow
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0f, -5.0f), new Vector3(0.55f, 0.55f, 0.4f), new Color(255, 140, 50, 255));
+    }
+
+    /// <summary>Fat short fuselage, olive — lives in the slow lane.</summary>
+    private static void DrawSlowCruise(Vector3 pos, Quaternion rot)
+    {
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0f, 0f), new Vector3(1.6f, 1.35f, 7.0f), new Color(95, 110, 70, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.12f, 0.2f), new Vector3(15.0f, 0.28f, 2.4f), new Color(120, 140, 85, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 1.15f, -2.6f), new Vector3(0.28f, 2.5f, 1.3f), new Color(110, 130, 75, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.18f, -2.8f), new Vector3(4.5f, 0.22f, 1.3f), new Color(100, 120, 70, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.4f, 2.8f), new Vector3(1.2f, 0.85f, 1.5f), new Color(45, 55, 35, 255));
+        // Fixed gear stubs
+        DrawOrientedBox(pos, rot, new Vector3(-1.2f, -0.9f, 0.5f), new Vector3(0.2f, 0.9f, 0.2f), new Color(40, 42, 38, 255));
+        DrawOrientedBox(pos, rot, new Vector3(1.2f, -0.9f, 0.5f), new Vector3(0.2f, 0.9f, 0.2f), new Color(40, 42, 38, 255));
+    }
+
+    /// <summary>Arrowhead, white — stays crisp deep into high speed.</summary>
+    private static void DrawLateCompression(Vector3 pos, Quaternion rot)
+    {
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0f, 0.5f), new Vector3(1.05f, 0.9f, 9.0f), new Color(235, 238, 242, 255));
+        DrawOrientedBox(pos, rot, new Vector3(-2.8f, 0.08f, -0.6f), new Vector3(5.6f, 0.18f, 2.6f), new Color(70, 150, 190, 255));
+        DrawOrientedBox(pos, rot, new Vector3(2.8f, 0.08f, -0.6f), new Vector3(5.6f, 0.18f, 2.6f), new Color(70, 150, 190, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.85f, -3.6f), new Vector3(0.2f, 2.0f, 1.5f), new Color(55, 130, 170, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.14f, -3.8f), new Vector3(3.0f, 0.16f, 1.1f), new Color(50, 120, 160, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.3f, 3.8f), new Vector3(0.85f, 0.55f, 1.4f), new Color(25, 45, 60, 255));
+        // Tip markers
+        DrawOrientedBox(pos, rot, new Vector3(-5.2f, 0.1f, -1.4f), new Vector3(0.35f, 0.22f, 0.9f), new Color(220, 80, 50, 255));
+        DrawOrientedBox(pos, rot, new Vector3(5.2f, 0.1f, -1.4f), new Vector3(0.35f, 0.22f, 0.9f), new Color(220, 80, 50, 255));
+    }
+
+    /// <summary>Blunt trainer, copper — controls stiffen early.</summary>
+    private static void DrawEarlyCompression(Vector3 pos, Quaternion rot)
+    {
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0f, 0.1f), new Vector3(1.4f, 1.15f, 7.5f), new Color(170, 105, 65, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.1f, 0f), new Vector3(11.5f, 0.26f, 2.0f), new Color(195, 130, 80, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 1.0f, -3.0f), new Vector3(0.26f, 2.2f, 1.3f), new Color(180, 115, 70, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.16f, -3.2f), new Vector3(3.8f, 0.2f, 1.2f), new Color(160, 100, 60, 255));
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.38f, 3.0f), new Vector3(1.15f, 0.75f, 1.5f), new Color(55, 40, 30, 255));
+        // Soft-stick cue: oversized elevators
+        DrawOrientedBox(pos, rot, new Vector3(0f, 0.2f, -3.5f), new Vector3(4.6f, 0.14f, 0.55f), new Color(90, 55, 35, 255));
     }
 
     /// <summary>Twin nacelles on the wings; dim a nacelle when that engine is offline.</summary>

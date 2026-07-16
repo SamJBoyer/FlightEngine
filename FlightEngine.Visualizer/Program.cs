@@ -24,7 +24,9 @@ internal static class Program
         AircraftDefinition aircraft = AircraftRoster.ByIndex(aircraftIndex);
         FlightSimulator sim = new(aircraft.Properties) { Throttle = 0.75f };
         VirtualPilotController vpc = new(aircraft.Properties);
+        ManualPathHoldController pathHold = new();
         FlightState state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
+        pathHold.Reset(state);
         using CloudField clouds = new();
 
         bool vpcMode = false;
@@ -32,6 +34,7 @@ internal static class Program
         float cameraYawOffset = 0f;
         float cameraPitchOffset = 0.25f;
         float elapsed = 0f;
+        float cruiseThrottle = 0.75f;
         ForceVector? pendingDebugForce = null;
 
         while (!Raylib.WindowShouldClose())
@@ -47,6 +50,8 @@ internal static class Program
                 ref aircraft,
                 ref sim,
                 ref vpc,
+                ref pathHold,
+                ref cruiseThrottle,
                 ref pendingDebugForce);
 
             if (!vpcMode)
@@ -79,10 +84,10 @@ internal static class Program
             }
             else
             {
-                fci = ReadManualFci();
+                fci = ReadManualFci(pathHold, state, dt);
             }
 
-            AdjustThrottle(sim, dt);
+            AdjustThrottle(sim, ref cruiseThrottle, dt);
             if (pendingDebugForce is ForceVector debugForce)
             {
                 state = sim.Tick(state, fci, dt, [debugForce]);
@@ -144,6 +149,8 @@ internal static class Program
         ref AircraftDefinition aircraft,
         ref FlightSimulator sim,
         ref VirtualPilotController vpc,
+        ref ManualPathHoldController pathHold,
+        ref float cruiseThrottle,
         ref ForceVector? pendingDebugForce)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.V))
@@ -157,6 +164,7 @@ internal static class Program
             else
             {
                 Raylib.DisableCursor();
+                pathHold.Reset(state);
             }
         }
 
@@ -173,7 +181,7 @@ internal static class Program
         if (Raylib.IsKeyPressed(KeyboardKey.P))
         {
             aircraftIndex = (aircraftIndex + 1) % AircraftRoster.All.Count;
-            LoadAircraft(aircraftIndex, ref aircraft, ref sim, ref vpc, ref state);
+            LoadAircraft(aircraftIndex, ref aircraft, ref sim, ref vpc, ref pathHold, ref state);
         }
 
         if (Raylib.IsKeyPressed(KeyboardKey.Y))
@@ -190,9 +198,11 @@ internal static class Program
         if (Raylib.IsKeyPressed(KeyboardKey.R))
         {
             state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
-            sim.Throttle = 0.75f;
+            cruiseThrottle = 0.75f;
+            sim.Throttle = cruiseThrottle;
             sim.RestoreEngines();
             vpc = new VirtualPilotController(aircraft.Properties);
+            pathHold.Reset(state);
         }
 
         if (Raylib.IsKeyPressed(KeyboardKey.Space))
@@ -213,13 +223,15 @@ internal static class Program
         ref AircraftDefinition aircraft,
         ref FlightSimulator sim,
         ref VirtualPilotController vpc,
+        ref ManualPathHoldController pathHold,
         ref FlightState state)
     {
         aircraft = AircraftRoster.ByIndex(index);
-        float throttle = sim.Throttle;
+        float throttle = Math.Clamp(sim.Throttle > 1f ? 1f : sim.Throttle, 0f, 1f);
         sim = new FlightSimulator(aircraft.Properties) { Throttle = throttle };
         vpc = new VirtualPilotController(aircraft.Properties);
         state = DefaultAircraft.CreateLevelFlight(320f, altitudeMeters: 800f);
+        pathHold.Reset(state);
     }
 
     /// <summary>
@@ -278,19 +290,19 @@ internal static class Program
         return aileron;
     }
 
-    private static Fci ReadManualFci()
+    private static Fci ReadManualFci(ManualPathHoldController pathHold, in FlightState state, float dt)
     {
-        float elevator = 0f;
+        float elevatorStick = 0f;
         float rudder = 0f;
 
         if (Raylib.IsKeyDown(KeyboardKey.W) || Raylib.IsKeyDown(KeyboardKey.Up))
         {
-            elevator += 1f;
+            elevatorStick += 1f;
         }
 
         if (Raylib.IsKeyDown(KeyboardKey.S) || Raylib.IsKeyDown(KeyboardKey.Down))
         {
-            elevator -= 1f;
+            elevatorStick -= 1f;
         }
 
         if (Raylib.IsKeyDown(KeyboardKey.E))
@@ -303,23 +315,33 @@ internal static class Program
             rudder -= 1f;
         }
 
-        return new Fci(ReadManualAileron(), elevator, rudder);
+        // Elevators always trim to the last nose-vector; stick retargets that attitude.
+        return pathHold.ComputeFci(state, ReadManualAileron(), elevatorStick, rudder, dt);
     }
 
-    private static void AdjustThrottle(FlightSimulator sim, float dt)
+    /// <summary>
+    /// Hold Shift for 5× afterburner (compression testing). Ctrl / = adjust cruise 0–100%.
+    /// </summary>
+    private static void AdjustThrottle(FlightSimulator sim, ref float cruiseThrottle, float dt)
     {
+        const float afterburnerThrottle = 5f;
+
         float delta = 0f;
-        if (Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift))
+        if (Raylib.IsKeyDown(KeyboardKey.Equal) || Raylib.IsKeyDown(KeyboardKey.KpAdd))
         {
             delta += 0.55f * dt;
         }
 
-        if (Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl))
+        if (Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl)
+            || Raylib.IsKeyDown(KeyboardKey.Minus) || Raylib.IsKeyDown(KeyboardKey.KpSubtract))
         {
             delta -= 0.55f * dt;
         }
 
-        sim.Throttle = Math.Clamp(sim.Throttle + delta, 0f, 1f);
+        cruiseThrottle = Math.Clamp(cruiseThrottle + delta, 0f, 1f);
+
+        bool boost = Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift);
+        sim.Throttle = boost ? afterburnerThrottle : cruiseThrottle;
     }
 
     private static Camera3D BuildChaseCamera(

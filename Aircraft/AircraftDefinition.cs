@@ -25,5 +25,9 @@ public enum PlaneVisualStyle
     SlowRoll,
     TightTurn,
     WideTurn,
-    TwinEngine
+    TwinEngine,
+    FastCruise,
+    SlowCruise,
+    LateCompression,
+    EarlyCompression
 }

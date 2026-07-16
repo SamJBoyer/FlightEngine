@@ -4,7 +4,9 @@ using FlightEngine.Core;
 namespace FlightEngine.Aircraft;
 
 /// <summary>
-/// Demo fleet: contrasting roll / turn performance plus a twin-engine airframe.
+/// Demo fleet: roll / turn / speed / compression contrasts plus a twin-engine airframe.
+/// Compression onset is <see cref="FlightProperties.ReferenceSpeedKmh"/> — authority peaks there,
+/// then fades as dynamic pressure climbs past design speed.
 /// </summary>
 public static class AircraftRoster
 {
@@ -53,6 +55,30 @@ public static class AircraftRoster
                 MassKg = p.MassKg * 1.25f,
                 InertiaTensor = p.InertiaTensor * 1.35f
             }),
+        Create(
+            id: "fast",
+            name: "Needle Jet",
+            trait: "fast cruise",
+            visual: PlaneVisualStyle.FastCruise,
+            mutate: MakeFastCruise),
+        Create(
+            id: "slow",
+            name: "Sky Barge",
+            trait: "slow cruise",
+            visual: PlaneVisualStyle.SlowCruise,
+            mutate: MakeSlowCruise),
+        Create(
+            id: "late-comp",
+            name: "Hard Stick",
+            trait: "late compression",
+            visual: PlaneVisualStyle.LateCompression,
+            mutate: p => p with { ReferenceSpeedKmh = 720f }),
+        Create(
+            id: "early-comp",
+            name: "Soft Stick",
+            trait: "early compression",
+            visual: PlaneVisualStyle.EarlyCompression,
+            mutate: p => p with { ReferenceSpeedKmh = 240f }),
         Create(
             id: "twin",
             name: "Twin Boom",
@@ -104,6 +130,29 @@ public static class AircraftRoster
         };
     }
 
+    /// <summary>High thrust, slick airframe — builds and holds speed easily.</summary>
+    private static FlightProperties MakeFastCruise(FlightProperties p) =>
+        ScaleThrust(p, 1.75f) with
+        {
+            ParasiteDragCoefficient = p.ParasiteDragCoefficient * 0.55f,
+            MassKg = p.MassKg * 0.92f,
+            WingArea = p.WingArea * 0.9f,
+            InducedDragFactor = p.InducedDragFactor * 1.1f,
+            MaxLiftCoefficient = p.MaxLiftCoefficient * 0.92f
+        };
+
+    /// <summary>Weak thrust, draggy airframe — lives at lower cruise speeds.</summary>
+    private static FlightProperties MakeSlowCruise(FlightProperties p) =>
+        ScaleThrust(p, 0.55f) with
+        {
+            ParasiteDragCoefficient = p.ParasiteDragCoefficient * 1.85f,
+            MassKg = p.MassKg * 1.15f,
+            WingArea = p.WingArea * 1.25f,
+            InducedDragFactor = p.InducedDragFactor * 0.9f,
+            MaxLiftCoefficient = p.MaxLiftCoefficient * 1.1f,
+            MinimumControlSpeedKmh = p.MinimumControlSpeedKmh * 0.85f
+        };
+
     private static FlightProperties MakeTwinEngine(FlightProperties p)
     {
         float half = p.Engines[0].MaxThrustNewtons * 0.5f;
@@ -117,6 +166,18 @@ public static class AircraftRoster
             MassKg = p.MassKg * 1.1f,
             InertiaTensor = p.InertiaTensor * new Vector3(1.15f, 1.25f, 1.1f)
         };
+    }
+
+    private static FlightProperties ScaleThrust(FlightProperties p, float factor)
+    {
+        EngineThrust[] engines = new EngineThrust[p.Engines.Length];
+        for (int i = 0; i < engines.Length; i++)
+        {
+            EngineThrust e = p.Engines[i];
+            engines[i] = new EngineThrust(e.MaxThrustNewtons * factor, e.LocalDirection, e.LocalApplicationPoint);
+        }
+
+        return p with { Engines = engines };
     }
 
     private static FlightProperties Clone(FlightProperties source, EngineThrust[] engines) =>

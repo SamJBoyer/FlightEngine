@@ -16,6 +16,8 @@ FCI (Flight controller input): a packet of alieron, rudder, and elevator instruc
 
 VPC (Virtual Pilot Controller): Algorithm that translates the a 3d point  to the FCI required to point the translation vector towards the Flight-cursor. 
 
+Manual path-hold: In direct (manual) control, elevators always trim to maintain the last commanded nose-vector. Stick pitch retargets that attitude; releasing the stick holds it so level flight does not require constant elevator pressure.
+
 Flight-state: a struct that represents the aerodynamic state of the plane. Consists of position, rotation, linear velocity, and angular velocity. 
 
 Flight-engine: Script responsible for taking a flight-state, applying an FCI to it, then calculating the resulting flight-state at each tick.

@@ -147,6 +147,35 @@ public class PhysicsContractTests
     }
 
     [Fact]
+    public void ManualPathHold_NeutralStick_HoldsNoseBetterThanZeroElevator()
+    {
+        FlightProperties props = DefaultAircraft.CreateProperties();
+        FlightSimulator heldSim = new(props) { Throttle = 0.75f };
+        FlightSimulator rawSim = new(props) { Throttle = 0.75f };
+        ManualPathHoldController pathHold = new();
+
+        FlightState held = DefaultAircraft.CreateLevelFlight(320f);
+        FlightState raw = held;
+        pathHold.Reset(held);
+
+        Vector3 startNose = held.NoseVector;
+        for (int i = 0; i < 240; i++)
+        {
+            Fci holdFci = pathHold.ComputeFci(held, aileron: 0f, elevatorStick: 0f, rudder: 0f, Dt);
+            held = heldSim.Tick(held, holdFci, Dt);
+            raw = rawSim.Tick(raw, Fci.Neutral, Dt);
+        }
+
+        float heldAlign = Vector3.Dot(held.NoseVector, startNose);
+        float rawAlign = Vector3.Dot(raw.NoseVector, startNose);
+        float heldAltitudeLoss = MathF.Abs(held.AltitudeMeters - 2000f);
+        float rawAltitudeLoss = MathF.Abs(raw.AltitudeMeters - 2000f);
+
+        Assert.True(heldAlign > rawAlign, $"Path-hold should keep nose ({heldAlign:F3} vs raw {rawAlign:F3})");
+        Assert.True(heldAltitudeLoss < rawAltitudeLoss, $"Path-hold should lose less altitude ({heldAltitudeLoss:F1}m vs {rawAltitudeLoss:F1}m)");
+    }
+
+    [Fact]
     public void Vpc_PointsTranslationTowardFlightCursor()
     {
         FlightProperties props = DefaultAircraft.CreateProperties();

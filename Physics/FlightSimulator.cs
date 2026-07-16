@@ -44,7 +44,10 @@ public sealed class FlightSimulator
         }
     }
 
-    /// <summary>Engine throttle in [0, 1]. Not part of FCI (control surfaces only).</summary>
+    /// <summary>
+    /// Engine throttle. 1 = rated thrust; values above 1 are overthrust / afterburner.
+    /// Not part of FCI (control surfaces only).
+    /// </summary>
     public float Throttle { get; set; }
 
     /// <summary>How quickly body rates track control-commanded rates (1/s).</summary>
@@ -192,7 +195,7 @@ public sealed class FlightSimulator
 
     private void CollectEngineForces(ref int count)
     {
-        float throttle = Math.Clamp(Throttle, 0f, 1f);
+        float throttle = Math.Max(0f, Throttle);
         for (int i = 0; i < _props.Engines.Length; i++)
         {
             if (!_engineOnline[i])

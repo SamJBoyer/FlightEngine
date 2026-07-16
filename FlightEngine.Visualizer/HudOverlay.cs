@@ -30,20 +30,24 @@ internal static class HudOverlay
         Line(ref y, $"Trait      {aircraft.Trait}", new Color(200, 190, 140, 255));
         Line(ref y, $"Speed      {speedKmh,7:0.0} km/h");
         Line(ref y, $"Altitude   {state.AltitudeMeters,7:0.0} m");
-        Line(ref y, $"Throttle   {sim.Throttle * 100f,7:0}%");
+        string throttleLabel = sim.Throttle > 1.01f
+            ? $"Throttle   {sim.Throttle * 100f,7:0}%  AFTERBURNER"
+            : $"Throttle   {sim.Throttle * 100f,7:0}%";
+        Line(ref y, throttleLabel, sim.Throttle > 1.01f ? new Color(255, 160, 60, 255) : null);
         Line(ref y, EngineStatus(sim));
         Line(ref y, $"Stall @    {stallKmh,7:0.0} km/h");
         Line(ref y, stalled ? "STATE      STALL" : "STATE      Flying", stalled ? new Color(255, 90, 70, 255) : new Color(120, 220, 140, 255));
         Line(ref y, vpcMode ? "Control    VPC (aim plane)" : "Control    Manual FCI");
         Line(ref y, $"Ail {fci.Aileron,5:0.00}  Elv {fci.Elevator,5:0.00}  Rdr {fci.Rudder,5:0.00}");
 
-        Raylib.DrawRectangle(12, Raylib.GetScreenHeight() - 210, 580, 198, new Color(12, 16, 22, 170));
-        int hy = Raylib.GetScreenHeight() - 198;
+        Raylib.DrawRectangle(12, Raylib.GetScreenHeight() - 230, 580, 218, new Color(12, 16, 22, 170));
+        int hy = Raylib.GetScreenHeight() - 218;
         if (vpcMode)
         {
             Help(ref hy, "Mouse            aim on plane ahead (world cursor)");
             Help(ref hy, "A / D            manual roll (overrides VPC bank)");
-            Help(ref hy, "Shift / Ctrl     throttle up / down");
+            Help(ref hy, "Shift            afterburner (5x thrust)");
+            Help(ref hy, "= / Ctrl         cruise throttle up / down");
             Help(ref hy, "P  next plane   Y kill random engine");
             Help(ref hy, "V  exit VPC   R reset   C camera zoom");
             Help(ref hy, "Space / T       debug force / huge kick");
@@ -51,10 +55,11 @@ internal static class HudOverlay
         }
         else
         {
-            Help(ref hy, "W/S or Up/Down   elevator (pitch)");
+            Help(ref hy, "W/S or Up/Down   pitch (release holds nose)");
             Help(ref hy, "A/D or Left/Right aileron (roll)");
             Help(ref hy, "Q / E            rudder (yaw)");
-            Help(ref hy, "Shift / Ctrl     throttle up / down");
+            Help(ref hy, "Shift            afterburner (5x thrust)");
+            Help(ref hy, "= / Ctrl         cruise throttle up / down");
             Help(ref hy, "P  next plane   Y kill random engine");
             Help(ref hy, "V  VPC mode   R reset   C camera zoom");
             Help(ref hy, "Space / T       debug force / huge kick");

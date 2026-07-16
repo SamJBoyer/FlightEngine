@@ -23,5 +23,5 @@ public readonly struct EngineThrust
     public Vector3 LocalApplicationPoint { get; }
 
     public ForceVector ToForceVector(float throttle) =>
-        ForceVector.LocalThrust(LocalDirection * (MaxThrustNewtons * Math.Clamp(throttle, 0f, 1f)), LocalApplicationPoint);
+        ForceVector.LocalThrust(LocalDirection * (MaxThrustNewtons * Math.Max(0f, throttle)), LocalApplicationPoint);
 }

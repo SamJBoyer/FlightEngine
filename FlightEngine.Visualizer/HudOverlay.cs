@@ -27,17 +27,28 @@ internal static class HudOverlay
         Line(ref y, $"Throttle   {sim.Throttle * 100f,7:0}%");
         Line(ref y, $"Stall @    {stallKmh,7:0.0} km/h");
         Line(ref y, stalled ? "STATE      STALL" : "STATE      Flying", stalled ? new Color(255, 90, 70, 255) : new Color(120, 220, 140, 255));
-        Line(ref y, vpcMode ? "Control    VPC (cursor)" : "Control    Manual FCI");
+        Line(ref y, vpcMode ? "Control    VPC (aim plane)" : "Control    Manual FCI");
         Line(ref y, $"Ail {fci.Aileron,5:0.00}  Elv {fci.Elevator,5:0.00}  Rdr {fci.Rudder,5:0.00}");
 
-        Raylib.DrawRectangle(12, Raylib.GetScreenHeight() - 150, 520, 138, new Color(12, 16, 22, 170));
+        Raylib.DrawRectangle(12, Raylib.GetScreenHeight() - 150, 560, 138, new Color(12, 16, 22, 170));
         int hy = Raylib.GetScreenHeight() - 138;
-        Help(ref hy, "W/S or Up/Down   elevator (pitch)");
-        Help(ref hy, "A/D or Left/Right aileron (roll)");
-        Help(ref hy, "Q / E            rudder (yaw)");
-        Help(ref hy, "Shift / Ctrl     throttle up / down");
-        Help(ref hy, "V  VPC mode   R reset   C camera zoom");
-        Help(ref hy, $"Chase distance: {chaseDistance:0} m   | green=nose  blue=velocity");
+        if (vpcMode)
+        {
+            Help(ref hy, "Mouse            aim on plane ahead (world cursor)");
+            Help(ref hy, "Shift / Ctrl     throttle up / down");
+            Help(ref hy, "V  exit VPC   R reset   C camera zoom");
+            Help(ref hy, "Yellow sphere = projected flight-cursor");
+            Help(ref hy, $"Chase distance: {chaseDistance:0} m");
+        }
+        else
+        {
+            Help(ref hy, "W/S or Up/Down   elevator (pitch)");
+            Help(ref hy, "A/D or Left/Right aileron (roll)");
+            Help(ref hy, "Q / E            rudder (yaw)");
+            Help(ref hy, "Shift / Ctrl     throttle up / down");
+            Help(ref hy, "V  VPC mode   R reset   C camera zoom");
+            Help(ref hy, $"Chase distance: {chaseDistance:0} m   | green=nose  blue=velocity");
+        }
     }
 
     private static void Line(ref int y, string text, Color? color = null)

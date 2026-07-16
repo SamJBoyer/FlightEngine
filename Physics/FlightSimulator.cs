@@ -47,11 +47,16 @@ public sealed class FlightSimulator
         Vector3 velocity = state.LinearVelocity;
 
         float pitchFromHorizon = MathF.Asin(Math.Clamp(nose.Y, -1f, 1f));
-        float effectiveness = ControlEffectiveness.Evaluate(_props, speed, pitchFromHorizon);
+        float speedKmh = Speed.MetersPerSecondToKmh(speed);
+        float stallSpeedKmh = ControlEffectiveness.StallSpeedKmh(_props, pitchFromHorizon);
+        float stallFactor = ControlEffectiveness.StallFactor(speedKmh, stallSpeedKmh);
+        float compression = ControlEffectiveness.CompressionFactor(_props, speedKmh);
+        float effectiveness = stallFactor * compression;
+        float stallSeverity = 1f - stallFactor;
 
         int count = 0;
         CollectEngineForces(ref count);
-        CollectAeroForces(state, velocity, speed, nose, ref count);
+        CollectAeroForces(state, velocity, speed, nose, stallFactor, stallSeverity, ref count);
         CollectGravity(ref count);
 
         for (int i = 0; i < externalForces.Length; i++)
@@ -65,13 +70,48 @@ public sealed class FlightSimulator
             out Vector3 worldForce,
             out Vector3 bodyTorqueFromForces);
 
+        if (stallSeverity > 0.05f)
+        {
+            // Forward-CoG moment only engages in stall (keeps normal flight trim clean).
+            Vector3 weightBody = Vector3.Transform(
+                new Vector3(0f, -_props.MassKg * _props.Gravity, 0f),
+                Quaternion.Inverse(state.Rotation));
+            bodyTorqueFromForces += Vector3.Cross(_props.CenterOfGravityLocal, weightBody) * stallSeverity;
+
+            // Nose-down while above the horizon; fade out once pitched down into the dive.
+            float noseHigh = Math.Clamp(nose.Y, 0f, 1f);
+            if (noseHigh > 0f)
+            {
+                bodyTorqueFromForces.X += _props.StallNoseDownTorque * stallSeverity * (0.35f + 0.65f * noseHigh);
+            }
+
+            // Weathervane into the dive once falling. While still climbing, tip toward world-down.
+            Vector3 targetDir = speed > 2f && velocity.Y <= 0f
+                ? velocity / speed
+                : Vector3.Normalize(new Vector3(nose.X, -1f, nose.Z));
+            float align = Vector3.Dot(nose, targetDir);
+            if (align > -0.92f)
+            {
+                Vector3 alignAxis = Vector3.Cross(nose, targetDir);
+                if (alignAxis.LengthSquared() > 1e-8f)
+                {
+                    // Ease weathercock as we approach the target to avoid flip-through.
+                    float catchUp = Math.Clamp(1f - align, 0f, 1.5f);
+                    Vector3 bodyAxis = Vector3.Transform(alignAxis, Quaternion.Inverse(state.Rotation));
+                    bodyTorqueFromForces += bodyAxis * (_props.StallWeathercockGain * stallSeverity * catchUp);
+                }
+            }
+
+            bodyTorqueFromForces += -state.AngularVelocity * (_props.StallAngularDamping * stallSeverity);
+        }
+
         Vector3 linearAccel = worldForce / _props.MassKg;
         Vector3 newVelocity = velocity + linearAccel * dt;
 
-        if (speed > 1f)
+        // Path follows the nose only while flying; in a stall, gravity owns the trajectory.
+        if (speed > 1f && stallFactor > 0.2f)
         {
             Vector3 velDir = Vector3.Normalize(newVelocity);
-            // Blend velocity toward nose so the translation-vector follows attitude (arcade).
             Vector3 blended = Vector3.Normalize(Vector3.Lerp(velDir, nose, 0.55f * effectiveness));
             newVelocity = blended * newVelocity.Length();
         }
@@ -90,9 +130,10 @@ public sealed class FlightSimulator
             bodyTorqueFromForces.Z / Math.Max(inertia.Z, 1f));
 
         float rateBlend = 1f - MathF.Exp(-AngularResponse * dt);
-        Vector3 newBodyOmega = Vector3.Lerp(state.AngularVelocity, desiredBodyOmega, rateBlend);
+        // Deep stall: let recovery torques dominate over stick commands.
+        float controlAuthority = Math.Clamp(effectiveness, 0.05f, 1f);
+        Vector3 newBodyOmega = Vector3.Lerp(state.AngularVelocity, desiredBodyOmega, rateBlend * controlAuthority);
         newBodyOmega += torqueAlpha * dt;
-        // Passive damping on residual rates when controls are neutral-ish.
         newBodyOmega *= MathF.Exp(-0.15f * dt);
 
         Quaternion rotationDelta = IntegrateAngularVelocity(newBodyOmega, dt);
@@ -137,6 +178,8 @@ public sealed class FlightSimulator
         Vector3 velocity,
         float speed,
         Vector3 nose,
+        float stallFactor,
+        float stallSeverity,
         ref int count)
     {
         if (speed < 0.5f)
@@ -162,16 +205,18 @@ public sealed class FlightSimulator
             liftDir = -liftDir;
         }
 
-        float liftMag = dynamicPressure * _props.WingArea * MathF.Abs(cl);
-        // Signed lift: negative AoA produces downward lift.
+        float liftScale = _props.StallLiftRetention + (1f - _props.StallLiftRetention) * stallFactor;
+        float liftMag = dynamicPressure * _props.WingArea * MathF.Abs(cl) * liftScale;
         if (cl < 0f)
         {
             liftDir = -liftDir;
         }
 
+        // Lift acts at the aero reference (origin). With a forward CoG, lost lift => nose drop.
         _scratch[count++] = ForceVector.World(liftDir * liftMag, Vector3.Zero);
 
         float cd = _props.ParasiteDragCoefficient + _props.InducedDragFactor * cl * cl;
+        cd *= 1f + stallSeverity * 1.1f;
         float dragMag = dynamicPressure * _props.WingArea * cd;
         _scratch[count++] = ForceVector.World(-velDir * dragMag, Vector3.Zero);
 

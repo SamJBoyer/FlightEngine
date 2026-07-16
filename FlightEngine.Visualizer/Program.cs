@@ -36,18 +36,42 @@ internal static class Program
 
             HandleMetaInput(ref vpcMode, ref chaseDistance, ref state, sim);
 
-            Vector2 mouseDelta = Raylib.GetMouseDelta();
-            cameraYawOffset -= mouseDelta.X * 0.0025f;
-            cameraPitchOffset = Math.Clamp(cameraPitchOffset + mouseDelta.Y * 0.0025f, -0.6f, 0.8f);
+            if (!vpcMode)
+            {
+                Vector2 mouseDelta = Raylib.GetMouseDelta();
+                cameraYawOffset -= mouseDelta.X * 0.0025f;
+                cameraPitchOffset = Math.Clamp(cameraPitchOffset + mouseDelta.Y * 0.0025f, -0.6f, 0.8f);
+            }
+            else
+            {
+                // Locked chase cam while aiming with the free mouse cursor.
+                cameraYawOffset = 0f;
+                cameraPitchOffset = 0.18f;
+            }
 
-            Fci fci = vpcMode
-                ? vpc.ComputeFci(state, ComputeFlightCursor(state, cameraYawOffset, cameraPitchOffset))
-                : ReadManualFci();
+            Camera3D camera = BuildChaseCamera(state, chaseDistance, cameraYawOffset, cameraPitchOffset);
+
+            Vector3 flightCursor = default;
+            Fci fci;
+            if (vpcMode)
+            {
+                flightCursor = FlightCursor.ProjectFromMouse(state, camera);
+                fci = vpc.ComputeFci(state, flightCursor);
+            }
+            else
+            {
+                fci = ReadManualFci();
+            }
 
             AdjustThrottle(sim, dt);
             state = sim.Tick(state, fci, dt);
 
-            Camera3D camera = BuildChaseCamera(state, chaseDistance, cameraYawOffset, cameraPitchOffset);
+            // Camera tracks the post-tick pose for rendering.
+            camera = BuildChaseCamera(state, chaseDistance, cameraYawOffset, cameraPitchOffset);
+            if (vpcMode)
+            {
+                flightCursor = FlightCursor.ProjectFromMouse(state, camera);
+            }
 
             Raylib.BeginDrawing();
             Raylib.ClearBackground(new Color(135, 185, 220, 255));
@@ -58,12 +82,15 @@ internal static class Program
 
             if (vpcMode)
             {
-                Vector3 cursor = ComputeFlightCursor(state, cameraYawOffset, cameraPitchOffset);
-                Raylib.DrawSphere(cursor, 4f, new Color(255, 200, 60, 220));
-                Raylib.DrawLine3D(state.Position, cursor, new Color(255, 200, 60, 160));
+                FlightCursor.DrawWorldMarkers(state, flightCursor);
             }
 
             Raylib.EndMode3D();
+
+            if (vpcMode)
+            {
+                FlightCursor.DrawScreenReticle();
+            }
 
             HudOverlay.Draw(state, fci, sim, vpcMode, chaseDistance);
             Raylib.DrawFPS(Raylib.GetScreenWidth() - 100, 16);
@@ -82,6 +109,15 @@ internal static class Program
         if (Raylib.IsKeyPressed(KeyboardKey.V))
         {
             vpcMode = !vpcMode;
+            if (vpcMode)
+            {
+                Raylib.EnableCursor();
+                Raylib.SetMousePosition(Raylib.GetScreenWidth() / 2, Raylib.GetScreenHeight() / 2);
+            }
+            else
+            {
+                Raylib.DisableCursor();
+            }
         }
 
         if (Raylib.IsKeyPressed(KeyboardKey.C))
@@ -154,16 +190,6 @@ internal static class Program
         }
 
         sim.Throttle = Math.Clamp(sim.Throttle + delta, 0f, 1f);
-    }
-
-    private static Vector3 ComputeFlightCursor(in FlightState state, float yawOffset, float pitchOffset)
-    {
-        Quaternion look =
-            Quaternion.CreateFromAxisAngle(Vector3.UnitY, yawOffset) *
-            Quaternion.CreateFromAxisAngle(Vector3.UnitX, -pitchOffset);
-
-        Vector3 ahead = Vector3.Transform(Vector3.UnitZ, look * state.Rotation);
-        return state.Position + ahead * 400f + Vector3.UnitY * 20f;
     }
 
     private static Camera3D BuildChaseCamera(

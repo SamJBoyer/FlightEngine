@@ -106,6 +106,47 @@ public class PhysicsContractTests
     }
 
     [Fact]
+    public void Stall_DropsNoseAndRecoversAirspeed()
+    {
+        FlightSimulator sim = new(DefaultAircraft.CreateProperties()) { Throttle = 0.2f };
+
+        // Deep stall: below vertical stall speed (40 km/h) with nose straight up.
+        float speed = Speed.KmhToMetersPerSecond(30f);
+        Quaternion noseUp = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -MathF.PI * 0.5f);
+        FlightState state = new(
+            new Vector3(0f, 2500f, 0f),
+            noseUp,
+            Vector3.Transform(new Vector3(0f, 0f, speed), noseUp),
+            Vector3.Zero);
+
+        Assert.True(sim.IsStalled(state));
+        float startPitch = MathF.Asin(Math.Clamp(state.NoseVector.Y, -1f, 1f));
+
+        // Hold full back stick — recovery should still win once deeply stalled.
+        float minPitch = startPitch;
+        bool sawFall = false;
+        for (int i = 0; i < 180; i++)
+        {
+            state = sim.Tick(state, new Fci(0f, 1f, 0f), Dt);
+            minPitch = MathF.Min(minPitch, MathF.Asin(Math.Clamp(state.NoseVector.Y, -1f, 1f)));
+            sawFall |= state.LinearVelocity.Y < 0f;
+        }
+
+        Assert.True(minPitch < startPitch - 0.35f, $"Nose should drop in stall (start {startPitch:F2}, min {minPitch:F2})");
+        Assert.True(sawFall, "Should enter a falling trajectory during stall recovery");
+
+        // Let it dive and regain flying speed.
+        for (int i = 0; i < 480; i++)
+        {
+            state = sim.Tick(state, Fci.Neutral, Dt);
+        }
+
+        float endSpeedKmh = Speed.MetersPerSecondToKmh(state.SpeedMetersPerSecond);
+        Assert.True(endSpeedKmh > 150f, $"Should regain flying speed after dive, got {endSpeedKmh:F0} km/h");
+        Assert.False(sim.IsStalled(state));
+    }
+
+    [Fact]
     public void Vpc_PointsTranslationTowardFlightCursor()
     {
         FlightProperties props = DefaultAircraft.CreateProperties();

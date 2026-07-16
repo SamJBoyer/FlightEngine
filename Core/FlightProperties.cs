@@ -39,6 +39,29 @@ public sealed class FlightProperties
     /// <summary>Stall speed (km/h) when nose is pointed straight up (90°).</summary>
     public float VerticalStallSpeedKmh { get; init; } = 40f;
 
+    /// <summary>
+    /// Body-space center of gravity relative to the aero reference (meters).
+    /// Forward (+Z) CoG produces nose-down pitch when wing lift collapses.
+    /// </summary>
+    public Vector3 CenterOfGravityLocal { get; init; } = new(0f, 0f, 1.2f);
+
+    /// <summary>Fraction of lift retained in a deep stall (0–1).</summary>
+    public float StallLiftRetention { get; init; } = 0.08f;
+
+    /// <summary>
+    /// Extra body-torque gain that weathervanes the nose into the velocity vector while stalled.
+    /// </summary>
+    public float StallWeathercockGain { get; init; } = 14000f;
+
+    /// <summary>
+    /// Direct nose-down body torque (N·m scale) applied while stalled, strongest when nose-high.
+    /// Covers the vertical case where CoG lever arm and weathercock both go to zero.
+    /// </summary>
+    public float StallNoseDownTorque { get; init; } = 22000f;
+
+    /// <summary>Extra angular damping while stalled to prevent end-over-end tumbling.</summary>
+    public float StallAngularDamping { get; init; } = 9000f;
+
     /// <summary>Speed (km/h) where compression begins reducing control effectiveness.</summary>
     public float CompressionStartKmh { get; init; } = 550f;
 

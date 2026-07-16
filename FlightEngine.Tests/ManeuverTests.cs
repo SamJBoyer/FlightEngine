@@ -100,9 +100,9 @@ public class ManeuverTests
         FlightSimulator sim = CreateSim();
 
         FlightState level = DefaultAircraft.CreateLevelFlight(150f);
-        Assert.Equal(150f, sim.StallSpeedKmh(level), precision: 0);
+        Assert.InRange(sim.StallSpeedKmh(level), 148f, 152f);
 
-        // Nose straight up.
+        // Nose straight up — load factor → 0, diagnostic floor is minimum control speed.
         Quaternion vertical = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -MathF.PI / 2f);
         FlightState up = new(
             level.Position,
@@ -110,7 +110,7 @@ public class ManeuverTests
             Vector3.Transform(new Vector3(0f, 0f, Speed.KmhToMetersPerSecond(40f)), vertical),
             Vector3.Zero);
 
-        Assert.Equal(40f, sim.StallSpeedKmh(up), precision: 0);
+        Assert.InRange(sim.StallSpeedKmh(up), 38f, 42f);
     }
 
     [Fact]

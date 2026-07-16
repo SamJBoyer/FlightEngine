@@ -26,27 +26,38 @@ public sealed class FlightProperties
 
     public float InducedDragFactor { get; init; } = 0.08f;
 
-    /// <summary>Peak control rates at design dynamic pressure (rad/s).</summary>
-    public float MaxRollRate { get; init; } = MathF.PI / 3f; // 60 deg/s → 6s roll
+    /// <summary>AoA span (radians) over which CL falls from peak to deep-stall remnant.</summary>
+    public float StallAoAWidth { get; init; } = 0.35f;
 
-    public float MaxPitchRate { get; init; } = MathF.PI * 2f / 15f; // 24 deg/s → 15s loop
+    /// <summary>Fraction of CLmax retained in deep stall.</summary>
+    public float StallLiftRetention { get; init; } = 0.12f;
+
+    /// <summary>Control-surface retention once flow is fully separated.</summary>
+    public float PostStallControlRetention { get; init; } = 0.08f;
+
+    /// <summary>
+    /// Speed (km/h) where dynamic-pressure control authority peaks (design maneuver speed).
+    /// </summary>
+    public float ReferenceSpeedKmh { get; init; } = 400f;
+
+    /// <summary>
+    /// Minimum useful flying speed (km/h) used when reporting stall speed at extreme pitch.
+    /// Emerges as the floor of attitude-dependent stall diagnostics.
+    /// </summary>
+    public float MinimumControlSpeedKmh { get; init; } = 40f;
+
+    /// <summary>Peak control rates at reference dynamic pressure (rad/s).</summary>
+    public float MaxRollRate { get; init; } = MathF.PI / 3f;
+
+    public float MaxPitchRate { get; init; } = MathF.PI * 2f / 15f;
 
     public float MaxYawRate { get; init; } = MathF.PI * 2f / 15f;
-
-    /// <summary>Level-flight stall speed (km/h) at 0° pitch.</summary>
-    public float LevelStallSpeedKmh { get; init; } = 150f;
-
-    /// <summary>Stall speed (km/h) when nose is pointed straight up (90°).</summary>
-    public float VerticalStallSpeedKmh { get; init; } = 40f;
 
     /// <summary>
     /// Body-space center of gravity relative to the aero reference (meters).
     /// Forward (+Z) CoG produces nose-down pitch when wing lift collapses.
     /// </summary>
     public Vector3 CenterOfGravityLocal { get; init; } = new(0f, 0f, 1.2f);
-
-    /// <summary>Fraction of lift retained in a deep stall (0–1).</summary>
-    public float StallLiftRetention { get; init; } = 0.08f;
 
     /// <summary>
     /// Extra body-torque gain that weathervanes the nose into the velocity vector while stalled.
@@ -55,23 +66,13 @@ public sealed class FlightProperties
 
     /// <summary>
     /// Direct nose-down body torque (N·m scale) applied while stalled, strongest when nose-high.
-    /// Covers the vertical case where CoG lever arm and weathercock both go to zero.
     /// </summary>
     public float StallNoseDownTorque { get; init; } = 22000f;
 
     /// <summary>Extra angular damping while stalled to prevent end-over-end tumbling.</summary>
     public float StallAngularDamping { get; init; } = 9000f;
 
-    /// <summary>Speed (km/h) where compression begins reducing control effectiveness.</summary>
-    public float CompressionStartKmh { get; init; } = 550f;
-
-    /// <summary>Additional speed (km/h) above start for near-full compression.</summary>
-    public float CompressionSpanKmh { get; init; } = 250f;
-
-    /// <summary>Angular damping coefficients (body axes).</summary>
-    public Vector3 AngularDamping { get; init; } = new(3.5f, 3.5f, 4f);
-
-    /// <summary>How strongly velocity aligns with the nose (1/s).</summary>
+    /// <summary>How strongly velocity aligns with the nose when lift is producing (1/s).</summary>
     public float VelocityAlignRate { get; init; } = 1.2f;
 
     public float AirDensity { get; init; } = 1.225f;

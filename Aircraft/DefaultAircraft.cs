@@ -16,14 +16,16 @@ public static class DefaultAircraft
         const float cd0 = 0.028f;
         const float airDensity = 1.225f;
 
-        // Size thrust so a 20° climb near 280 km/h is sustainable at full throttle,
-        // while level flight settles lower without needing continuous dive.
+        // CLmax chosen so level stall speed ≈ 150 km/h:
+        // Vs = sqrt(2mg / (ρ S CLmax))
+        const float clMax = 1.47f;
+
         float climbSpeed = Speed.KmhToMetersPerSecond(280f);
         float qClimb = 0.5f * airDensity * climbSpeed * climbSpeed;
         float dragClimb = qClimb * wingArea * cd0;
         float weight = mass * 9.81f;
         float climbAngle = 20f * MathF.PI / 180f;
-        float maxThrust = dragClimb + weight * MathF.Sin(climbAngle) * 1.05f;
+        float maxThrust = dragClimb + weight * MathF.Sin(climbAngle) * 0.98f;
 
         return new FlightProperties
         {
@@ -34,19 +36,20 @@ public static class DefaultAircraft
                 new EngineThrust(maxThrust, Vector3.UnitZ, Vector3.Zero)
             ],
             WingArea = wingArea,
-            LiftSlope = 5.2f,
-            MaxLiftCoefficient = 1.6f,
+            // Lower slope → higher critical AoA (~30°) so loops/pull-ups stay attached.
+            LiftSlope = 2.8f,
+            MaxLiftCoefficient = clMax,
             ParasiteDragCoefficient = cd0,
             InducedDragFactor = 0.05f,
+            StallAoAWidth = 0.5f,
+            StallLiftRetention = 0.15f,
+            PostStallControlRetention = 0.2f,
+            ReferenceSpeedKmh = 400f,
+            MinimumControlSpeedKmh = 40f,
             MaxRollRate = MathF.PI / 3f,
-            MaxPitchRate = MathF.PI * 2f / 15f,
+            MaxPitchRate = MathF.PI * 2f / 14.2f,
             MaxYawRate = MathF.PI * 2f / 15f,
-            LevelStallSpeedKmh = 150f,
-            VerticalStallSpeedKmh = 40f,
-            CompressionStartKmh = 550f,
-            CompressionSpanKmh = 250f,
-            AngularDamping = new Vector3(4f, 4f, 5f),
-            VelocityAlignRate = 2.0f,
+            VelocityAlignRate = 3.2f,
             AirDensity = airDensity
         };
     }

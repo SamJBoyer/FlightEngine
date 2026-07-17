@@ -44,7 +44,7 @@ internal static class Aerodynamics
         float t = Math.Clamp((abs - aCrit) / Math.Max(props.StallAoAWidth, 1e-3f), 0f, 1f);
         t = t * t * (3f - 2f * t);
         float clDeep = props.StallLiftRetention * props.MaxLiftCoefficient;
-        return sign * float.Lerp(props.MaxLiftCoefficient, clDeep, t);
+        return sign * Lerp(props.MaxLiftCoefficient, clDeep, t);
     }
 
     /// <summary>
@@ -60,8 +60,10 @@ internal static class Aerodynamics
         }
 
         float t = Math.Clamp((abs - aCrit) / Math.Max(props.StallAoAWidth, 1e-3f), 0f, 1f);
-        return float.Lerp(1f, props.PostStallControlRetention, t);
+        return Lerp(1f, props.PostStallControlRetention, t);
     }
+
+    private static float Lerp(float a, float b, float t) => a + (b - a) * t;
 
     /// <summary>
     /// Control authority from dynamic pressure. Peaks near reference speed, fades at low q

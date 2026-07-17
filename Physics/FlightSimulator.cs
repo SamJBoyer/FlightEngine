@@ -9,6 +9,8 @@ namespace FlightEngine.Physics;
 /// </summary>
 public sealed class FlightSimulator
 {
+    private static readonly Random Rng = new();
+
     private readonly FlightProperties _props;
     private readonly ForceVector[] _scratch;
     private readonly bool[] _engineOnline;
@@ -64,7 +66,7 @@ public sealed class FlightSimulator
             return -1;
         }
 
-        int pick = Random.Shared.Next(online);
+        int pick = Rng.Next(online);
         for (int i = 0; i < _engineOnline.Length; i++)
         {
             if (!_engineOnline[i])

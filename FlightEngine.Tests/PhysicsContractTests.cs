@@ -246,10 +246,17 @@ public class PhysicsContractTests
             MaxRollRate = source.MaxRollRate,
             MaxPitchRate = source.MaxPitchRate,
             MaxYawRate = source.MaxYawRate,
+            AileronClGain = source.AileronClGain,
+            ElevatorClGain = source.ElevatorClGain,
+            RudderClGain = source.RudderClGain,
+            ElevatorAreaFraction = source.ElevatorAreaFraction,
+            RudderAreaFraction = source.RudderAreaFraction,
             CenterOfGravityLocal = source.CenterOfGravityLocal,
             AeroCenterLocal = source.AeroCenterLocal,
             VelocityAlignRate = source.VelocityAlignRate,
             AeroTorqueCoupling = source.AeroTorqueCoupling,
+            ControlRateAssist = source.ControlRateAssist,
+            ControlSurfaceMomentBlend = source.ControlSurfaceMomentBlend,
             AirDensity = source.AirDensity,
             Gravity = source.Gravity
         };

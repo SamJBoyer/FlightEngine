@@ -51,12 +51,30 @@ public sealed record FlightProperties
     /// </summary>
     public float MinimumControlSpeedKmh { get; init; } = 40f;
 
-    /// <summary>Peak control rates at reference dynamic pressure (rad/s).</summary>
+    /// <summary>
+    /// Target peak body rates at reference dynamic pressure (rad/s).
+    /// Size rate-damping against hinged-surface torque so steady rates land here.
+    /// </summary>
     public float MaxRollRate { get; init; } = MathF.PI / 3f;
 
     public float MaxPitchRate { get; init; } = MathF.PI * 2f / 15f;
 
     public float MaxYawRate { get; init; } = MathF.PI * 2f / 15f;
+
+    /// <summary>Peak |ΔCL| on aileron strips at full deflection.</summary>
+    public float AileronClGain { get; init; } = 0.85f;
+
+    /// <summary>Peak |ΔCL| on elevator panels at full deflection.</summary>
+    public float ElevatorClGain { get; init; } = 0.9f;
+
+    /// <summary>Peak |ΔCY| on the rudder at full deflection.</summary>
+    public float RudderClGain { get; init; } = 0.75f;
+
+    /// <summary>Horizontal-tail / elevator area as a fraction of wing area.</summary>
+    public float ElevatorAreaFraction { get; init; } = 0.16f;
+
+    /// <summary>Vertical-tail / rudder area as a fraction of wing area.</summary>
+    public float RudderAreaFraction { get; init; } = 0.1f;
 
     /// <summary>
     /// Body-space center of gravity relative to the CoM origin (meters).
@@ -75,10 +93,20 @@ public sealed record FlightProperties
     public float VelocityAlignRate { get; init; } = 1.2f;
 
     /// <summary>
-    /// Scales moments from spatially integrated aero panels. 1 = full strip-theory torque;
-    /// lower values keep arcade control-rate tracking dominant over aerodynamic damping.
+    /// Scales moments from spatially integrated aero panels (including hinged surfaces).
     /// </summary>
-    public float AeroTorqueCoupling { get; init; } = 0.35f;
+    public float AeroTorqueCoupling { get; init; } = 1f;
+
+    /// <summary>
+    /// How strongly body rates track Max*Rate targets (1 = full arcade rate ceiling).
+    /// </summary>
+    public float ControlRateAssist { get; init; } = 1f;
+
+    /// <summary>
+    /// How much hinged-surface / strip aero torque couples into body rates.
+    /// Keep moderate so surface geometry matters without breaking loop continuity.
+    /// </summary>
+    public float ControlSurfaceMomentBlend { get; init; } = 0.08f;
 
     public float AirDensity { get; init; } = 1.225f;
 

@@ -6,7 +6,7 @@ namespace FlightEngine.Physics;
 
 /// <summary>
 /// Flight-engine: applies an FCI (and optional force vectors) to a flight-state and advances one tick.
-/// Aerodynamic loads are spatially integrated over airframe panels.
+/// Aerodynamic loads and control moments are spatially integrated over airframe / surface panels.
 /// </summary>
 public sealed class FlightSimulator
 {
@@ -55,7 +55,7 @@ public sealed class FlightSimulator
     /// </summary>
     public float Throttle { get; set; }
 
-    /// <summary>How quickly body rates track control-commanded rates (1/s).</summary>
+    /// <summary>How quickly body rates track Max*Rate commands (1/s).</summary>
     public float AngularResponse { get; set; } = 10f;
 
     /// <summary>
@@ -126,23 +126,26 @@ public sealed class FlightSimulator
             state,
             _scratch.AsSpan(0, count),
             out Vector3 worldForce,
-            out Vector3 bodyTorqueFromForces);
+            out Vector3 rigidBodyTorque);
 
         SpatialAerodynamics.Integrate(
             state,
             _props,
             _panels,
+            fci,
+            authority,
             out Vector3 aeroForce,
             out Vector3 aeroTorque);
         worldForce += aeroForce;
-        // Full spatial force for translation; softened aero torque so panel damping
-        // doesn't overpower arcade rate-tracking (maneuver timing targets).
-        bodyTorqueFromForces += aeroTorque * _props.AeroTorqueCoupling;
+
+        // CoG / engines / impacts keep full rotational coupling; strip/surface aero moments blend.
+        float aeroMomentBlend = Math.Clamp(_props.ControlSurfaceMomentBlend, 0f, 1f)
+                                * _props.AeroTorqueCoupling;
+        Vector3 bodyTorque = rigidBodyTorque + aeroTorque * aeroMomentBlend;
 
         Vector3 linearAccel = worldForce / _props.MassKg;
         Vector3 newVelocity = velocity + linearAccel * dt;
 
-        // Path follows the nose with attached flow; keeps AoA from spiking in maneuvers.
         float qAuth = Aerodynamics.DynamicPressureAuthority(_props, speed);
         float flow = Aerodynamics.FlowAttachment(aoa, _props);
         float alignStrength = qAuth * flow * Math.Clamp(_props.VelocityAlignRate, 0f, 6f);
@@ -154,7 +157,6 @@ public sealed class FlightSimulator
             newVelocity = blended * newVelocity.Length();
         }
 
-        // Body rates scale with emergent control authority (q × flow attachment).
         Vector3 desiredBodyOmega = new(
             -fci.Elevator * _props.MaxPitchRate * authority,
             fci.Rudder * _props.MaxYawRate * authority,
@@ -162,12 +164,12 @@ public sealed class FlightSimulator
 
         Vector3 inertia = _props.InertiaTensor;
         Vector3 torqueAlpha = new(
-            bodyTorqueFromForces.X / Math.Max(inertia.X, 1f),
-            bodyTorqueFromForces.Y / Math.Max(inertia.Y, 1f),
-            bodyTorqueFromForces.Z / Math.Max(inertia.Z, 1f));
+            bodyTorque.X / Math.Max(inertia.X, 1f),
+            bodyTorque.Y / Math.Max(inertia.Y, 1f),
+            bodyTorque.Z / Math.Max(inertia.Z, 1f));
 
-        // Control accel fights physical moments (forward CoG, aero, impacts).
-        float controlStrength = AngularResponse * Math.Clamp(authority + 0.02f, 0.02f, 1f);
+        float assist = Math.Clamp(_props.ControlRateAssist, 0f, 1f);
+        float controlStrength = AngularResponse * assist * Math.Clamp(authority + 0.02f, 0.02f, 1f);
         Vector3 controlAlpha = (desiredBodyOmega - state.AngularVelocity) * controlStrength;
         Vector3 newBodyOmega = state.AngularVelocity + (controlAlpha + torqueAlpha) * dt;
         newBodyOmega *= MathF.Exp(-0.12f * dt);
@@ -223,7 +225,6 @@ public sealed class FlightSimulator
 
     private void CollectGravity(ref int count)
     {
-        // Weight at the forward CoG — nose-down moment appears naturally when wing lift fades.
         _scratch[count++] = ForceVector.World(
             new Vector3(0f, -_props.MassKg * _props.Gravity, 0f),
             _props.CenterOfGravityLocal);

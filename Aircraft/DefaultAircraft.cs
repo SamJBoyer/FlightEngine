@@ -57,13 +57,20 @@ public static class DefaultAircraft
             MinimumControlSpeedKmh = 40f,
             MaxRollRate = MathF.PI / 3f,
             // Sized so a full-stick loop from 400 km/h lands near 15s after q-authority bleed.
-            MaxPitchRate = MathF.PI * 2f / 6.5f,
+            MaxPitchRate = MathF.PI * 2f / 11f,
             MaxYawRate = MathF.PI * 2f / 15f,
+            AileronClGain = 0.9f,
+            ElevatorClGain = 0.55f,
+            RudderClGain = 0.85f,
+            ElevatorAreaFraction = 0.16f,
+            RudderAreaFraction = 0.1f,
             // CoG ahead of / below the aero center — mild static margin, natural stall tip.
             CenterOfGravityLocal = new Vector3(0f, -0.1f, 0.28f),
             AeroCenterLocal = new Vector3(0f, 0f, 0.2f),
             VelocityAlignRate = 3.2f,
             AeroTorqueCoupling = 1f,
+            ControlRateAssist = 1f,
+            ControlSurfaceMomentBlend = 0.08f,
             AirDensity = airDensity
         };
     }

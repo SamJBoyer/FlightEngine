@@ -64,6 +64,8 @@ bug: something that is broken or behaving incorrectly. marked with the bug tag o
 quickssue: a quick, low-ceremony issue captured from casual input without deep investigation. marked with the quickssue tag on git issues
 
 wonders: an open curiosity or "I wonder if..." question worth capturing for later exploration, not yet an idea or commitment. marked with the wonders tag on git issues
+
+feature: a requested capability or enhancement to build. marked with the feature tag on git issues
  
 </iTags>
 <hLabels>

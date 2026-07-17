@@ -14,7 +14,12 @@ public sealed record FlightProperties
 
     public required EngineThrust[] Engines { get; init; }
 
-    /// <summary>Reference wing area for lift/drag (m²).</summary>
+    /// <summary>
+    /// Airframe envelope used to place aero panels for spatial force integration.
+    /// </summary>
+    public AirframeGeometry Geometry { get; init; } = AirframeGeometry.BaseFighter;
+
+    /// <summary>Reference wing area for lift/drag (m²). Distributed across wing strips.</summary>
     public float WingArea { get; init; } = 20f;
 
     /// <summary>Lift coefficient slope per radian of angle of attack.</summary>
@@ -54,19 +59,26 @@ public sealed record FlightProperties
     public float MaxYawRate { get; init; } = MathF.PI * 2f / 15f;
 
     /// <summary>
-    /// Body-space center of gravity relative to the aero reference (meters).
+    /// Body-space center of gravity relative to the CoM origin (meters).
     /// Forward (+Z) of the wing so weight pitches the nose down when lift collapses.
     /// </summary>
     public Vector3 CenterOfGravityLocal { get; init; } = new(0f, -0.2f, 0.55f);
 
     /// <summary>
-    /// Body-space point where lift/drag are applied. Slightly behind the CoG so
-    /// level flight is near trim, while lost lift leaves a CoG nose-down moment.
+    /// Body-space wing aero-center / MAC reference used when laying out wing strips.
+    /// Slightly behind the CoG so level flight is near trim, while lost lift leaves
+    /// a CoG nose-down moment.
     /// </summary>
     public Vector3 AeroCenterLocal { get; init; } = new(0f, 0f, 0.4f);
 
     /// <summary>How strongly velocity aligns with the nose when lift is producing (1/s).</summary>
     public float VelocityAlignRate { get; init; } = 1.2f;
+
+    /// <summary>
+    /// Scales moments from spatially integrated aero panels. 1 = full strip-theory torque;
+    /// lower values keep arcade control-rate tracking dominant over aerodynamic damping.
+    /// </summary>
+    public float AeroTorqueCoupling { get; init; } = 0.35f;
 
     public float AirDensity { get; init; } = 1.225f;
 

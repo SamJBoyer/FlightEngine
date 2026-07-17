@@ -186,6 +186,7 @@ public static class AircraftRoster
             MassKg = source.MassKg,
             InertiaTensor = source.InertiaTensor,
             Engines = engines,
+            Geometry = source.Geometry,
             WingArea = source.WingArea,
             LiftSlope = source.LiftSlope,
             MaxLiftCoefficient = source.MaxLiftCoefficient,
@@ -202,6 +203,7 @@ public static class AircraftRoster
             CenterOfGravityLocal = source.CenterOfGravityLocal,
             AeroCenterLocal = source.AeroCenterLocal,
             VelocityAlignRate = source.VelocityAlignRate,
+            AeroTorqueCoupling = source.AeroTorqueCoupling,
             AirDensity = source.AirDensity,
             Gravity = source.Gravity
         };

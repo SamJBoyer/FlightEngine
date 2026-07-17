@@ -6,19 +6,22 @@ namespace FlightEngine.Physics;
 
 /// <summary>
 /// Flight-engine: applies an FCI (and optional force vectors) to a flight-state and advances one tick.
+/// Aerodynamic loads are spatially integrated over airframe panels.
 /// </summary>
 public sealed class FlightSimulator
 {
     private static readonly Random Rng = new();
 
     private readonly FlightProperties _props;
+    private readonly AeroPanel[] _panels;
     private readonly ForceVector[] _scratch;
     private readonly bool[] _engineOnline;
 
     public FlightSimulator(FlightProperties properties, int maxExternalForces = 16)
     {
         _props = properties ?? throw new ArgumentNullException(nameof(properties));
-        _scratch = new ForceVector[properties.Engines.Length + maxExternalForces + 4];
+        _panels = AeroPanelBuilder.Build(properties);
+        _scratch = new ForceVector[properties.Engines.Length + maxExternalForces + 2];
         _engineOnline = new bool[properties.Engines.Length];
         Array.Fill(_engineOnline, true);
         Throttle = 1f;
@@ -109,11 +112,9 @@ public sealed class FlightSimulator
 
         float aoa = Aerodynamics.AngleOfAttack(state, _props);
         float authority = Aerodynamics.ControlAuthority(_props, speed, aoa);
-        float stallSeverity = Aerodynamics.StallSeverity(_props, speed, aoa);
 
         int count = 0;
         CollectEngineForces(ref count);
-        CollectAeroForces(state, velocity, speed, aoa, stallSeverity, ref count);
         CollectGravity(ref count);
 
         for (int i = 0; i < externalForces.Length; i++)
@@ -126,6 +127,17 @@ public sealed class FlightSimulator
             _scratch.AsSpan(0, count),
             out Vector3 worldForce,
             out Vector3 bodyTorqueFromForces);
+
+        SpatialAerodynamics.Integrate(
+            state,
+            _props,
+            _panels,
+            out Vector3 aeroForce,
+            out Vector3 aeroTorque);
+        worldForce += aeroForce;
+        // Full spatial force for translation; softened aero torque so panel damping
+        // doesn't overpower arcade rate-tracking (maneuver timing targets).
+        bodyTorqueFromForces += aeroTorque * _props.AeroTorqueCoupling;
 
         Vector3 linearAccel = worldForce / _props.MassKg;
         Vector3 newVelocity = velocity + linearAccel * dt;
@@ -215,54 +227,6 @@ public sealed class FlightSimulator
         _scratch[count++] = ForceVector.World(
             new Vector3(0f, -_props.MassKg * _props.Gravity, 0f),
             _props.CenterOfGravityLocal);
-    }
-
-    private void CollectAeroForces(
-        in FlightState state,
-        Vector3 velocity,
-        float speed,
-        float aoa,
-        float stallSeverity,
-        ref int count)
-    {
-        if (speed < 0.5f)
-        {
-            return;
-        }
-
-        Vector3 velDir = velocity / speed;
-        float q = Aerodynamics.DynamicPressure(_props, speed);
-        float cl = Aerodynamics.LiftCoefficient(aoa, _props);
-        Vector3 aeroPoint = _props.AeroCenterLocal;
-
-        Vector3 liftDir = Vector3.Cross(velDir, state.RightVector);
-        if (liftDir.LengthSquared() < 1e-6f)
-        {
-            liftDir = state.UpVector;
-        }
-
-        liftDir = Vector3.Normalize(liftDir);
-        if (Vector3.Dot(liftDir, state.UpVector) < 0f)
-        {
-            liftDir = -liftDir;
-        }
-
-        float liftMag = q * _props.WingArea * MathF.Abs(cl);
-        if (cl < 0f)
-        {
-            liftDir = -liftDir;
-        }
-
-        _scratch[count++] = ForceVector.World(liftDir * liftMag, aeroPoint);
-
-        float cd = _props.ParasiteDragCoefficient + _props.InducedDragFactor * cl * cl;
-        cd += stallSeverity * 0.9f;
-        float dragMag = q * _props.WingArea * cd;
-        _scratch[count++] = ForceVector.World(-velDir * dragMag, aeroPoint);
-
-        Vector3 side = state.RightVector;
-        float sideSlip = Vector3.Dot(velDir, side);
-        _scratch[count++] = ForceVector.World(-side * (sideSlip * q * _props.WingArea * 0.4f), aeroPoint);
     }
 
     private static Quaternion IntegrateAngularVelocity(Vector3 bodyOmega, float dt)

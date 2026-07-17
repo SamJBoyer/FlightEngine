@@ -10,6 +10,8 @@ This game engine is going to have a front end/back end structure where this beco
 
 hDocs/boundry.md explains the logic in greater detail
 
+Grok took a shot at this and did an amazing job. The physics look good and there is even a decent visualizer. 
+
 </summary> 
 <remotes>
 
@@ -19,12 +21,12 @@ FlightEngine-iPool stored at My Documents/OrkEngines/FlightEngine/FlightEngine-i
 </remotes>
 <artifacts>
 
-Initialized as empty.
+All features are currently looking pretty good. 
 
 </artifacts>
 <drift>
 
-Initialized as empty 
+As far as I can tell Grok has hit every need. The test suite isn't amazing so there could be some bubbles. 
 
 </drift>
 <overlay>

@@ -1,6 +1,6 @@
 <helmsman-summary>
 
-This is a Helmsman project.
+This is a Helmsman project. b
 
 Helmsman is an idea-to-product development pipeline designed to facilitate collaboration between developers and agents. Helmsman follows an ideate -> prototype -> evaluate -> refactor system that starts with creating well robustly structured documents explaining desired-features, questions, internal definitions, multi-project connections, and version-control policies for this project. These documents live inside the hDocs/ folder. 
 
